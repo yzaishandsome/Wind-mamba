@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+
+# Data and generated outputs
+processed_data/
+data/
+weights/
+figures/
+logs/
+*.pth
+*.pt
+*.ckpt
+*.csv
+*.npy
+*.npz
+
+# Local environment
+.venv/
+venv/
+env/
+.env
+
+# Editor/system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
