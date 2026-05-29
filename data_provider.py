@@ -5,6 +5,8 @@ from sklearn.preprocessing import StandardScaler
 from torch.utils.data import Dataset
 
 
+# This module reads user-preprocessed Saildrone CSV files. It does not download
+# raw NOAA PMEL ERDDAP/NetCDF data or perform mission-level raw-data conversion.
 TRAIN_RATIO = 0.6
 VAL_RATIO = 0.2
 EXPECTED_INTERVAL_MINUTES = 10
@@ -165,21 +167,10 @@ class USVDataset(Dataset):
 
 
 if __name__ == "__main__":
-    test_files = [
-        "processed_data/processed_sd1031.csv",
-        "processed_data/processed_sd1033.csv",
-        "processed_data/processed_sd1036.csv",
-        "processed_data/processed_sd1040.csv",
-        "processed_data/processed_sd1041.csv",
-        "processed_data/processed_sd1042.csv",
-        "processed_data/processed_sd1057.csv",
-        "processed_data/processed_sd1069.csv",
-        "processed_data/processed_sd1083.csv",
-        "processed_data/processed_sd1091.csv",
-    ]
+    from experiment_config import ALL_BOAT_FILES
 
     print("Testing USVDataset...")
-    train_dataset = USVDataset(file_paths=test_files, flag="train", seq_len=96, pred_len=6)
+    train_dataset = USVDataset(file_paths=ALL_BOAT_FILES, flag="train", seq_len=36, pred_len=6)
     print(f"train samples: {len(train_dataset)}")
     if len(train_dataset) > 0:
         print(f"sample X shape: {train_dataset[0][0].shape}")

@@ -11,7 +11,11 @@ This repository contains a compact implementation of Wind-Mamba, a persistence-g
 
 ## Expected Data Layout
 
-The training script expects processed Saildrone vessel files under:
+This repository does not include raw or processed Saildrone data. Raw Saildrone mission files are publicly available from the NOAA PMEL Saildrone archive and ERDDAP/NetCDF access service:
+
+<https://data.pmel.noaa.gov/pmel/erddap/info/index.html?page=1&itemsPerPage=1000>
+
+After downloading and preprocessing the mission files, place the processed CSV files under `processed_data/` by default:
 
 ```text
 processed_data/
@@ -21,9 +25,23 @@ processed_data/
   processed_sd1091.csv
 ```
 
+If your processed files are stored elsewhere, set the data root before running:
+
+```bash
+export WIND_MAMBA_DATA_ROOT=/path/to/your/processed_data
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:WIND_MAMBA_DATA_ROOT="D:\path\to\your\processed_data"
+```
+
+Alternatively, edit `DATA_ROOT`, `VESSEL_IDS`, and `TARGET_VESSEL_IDS` in `experiment_config.py` according to your local file layout.
+
 Each processed CSV should include the columns used in `data_provider.py`, including location, vessel-motion variables, wind-vector components, gust wind speed, air temperature, barometric pressure, true wind speed, and true wind direction.
 
-Raw Saildrone mission data are publicly available from the NOAA PMEL Saildrone mission archive and ERDDAP/NetCDF access service. This repository does not include raw data, processed data, trained weights, or paper figures.
+The repository intentionally excludes raw data, processed data, trained weights, and paper figures.
 
 ## Installation
 
