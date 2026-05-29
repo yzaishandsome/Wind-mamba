@@ -13,7 +13,7 @@ EXPECTED_INTERVAL_MINUTES = 10
 
 
 class USVDataset(Dataset):
-    def __init__(self, file_paths, flag="train", seq_len=96, pred_len=6, global_boat_ids=None, scaler=None):
+    def __init__(self, file_paths, flag="train", seq_len=36, pred_len=6, global_boat_ids=None, scaler=None):
         self.seq_len = seq_len
         self.pred_len = pred_len
         self.flag = flag

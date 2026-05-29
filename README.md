@@ -62,11 +62,12 @@ python main.py
 Key settings can be controlled by environment variables:
 
 ```bash
-EDGEWIND_SEQ_LEN=36
-EDGEWIND_PRED_LEN=6
-EDGEWIND_SEED=42
-EDGEWIND_LOSS_MODE=smoothl1_dircos
-EDGEWIND_WD_WEIGHT=1.0
+WIND_MAMBA_SEQ_LEN=36
+WIND_MAMBA_PRED_LEN=6
+WIND_MAMBA_SEED=42
+WIND_MAMBA_LOSS_MODE=smoothl1_dircos
+WIND_MAMBA_WD_WEIGHT=1.0
+WIND_MAMBA_UPPER_TAIL_WS_THRESHOLD=10.59
 ```
 
 Outputs are written to `weights/` and `figures/`, both of which are ignored by Git.

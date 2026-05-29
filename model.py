@@ -1,5 +1,4 @@
 import math
-import math
 import os
 
 import torch
@@ -15,24 +14,24 @@ except ImportError:
     HAS_OFFICIAL_MAMBA = False
 
 
-DEFAULT_HIGH_WIND_THRESHOLD = 10.59
+DEFAULT_UPPER_TAIL_WS_THRESHOLD = 10.59
 
 
 def resolve_mamba_backend(backend=None):
-    backend = (backend or os.getenv("EDGEWIND_MAMBA_BACKEND", "custom")).lower()
+    backend = (backend or os.getenv("WIND_MAMBA_BACKEND", "custom")).lower()
     if backend == "auto":
         return "official" if HAS_OFFICIAL_MAMBA else "custom"
     if backend == "official":
         if not HAS_OFFICIAL_MAMBA:
             raise ImportError(
-                "EDGEWIND_MAMBA_BACKEND=official was requested, but mamba_ssm is not installed. "
+                "WIND_MAMBA_BACKEND=official was requested, but mamba_ssm is not installed. "
                 "Install mamba-ssm on Linux or switch back to the custom backend."
             )
         return "official"
     if backend == "custom":
         return "custom"
-    if backend == "legacy":
-        return "legacy"
+    if backend == "reference":
+        return "reference"
     raise ValueError(f"Unsupported Mamba backend: {backend}")
 
 
@@ -90,8 +89,8 @@ class SelectiveSSM(nn.Module):
         return torch.stack(outputs, dim=1) + u * self.D
 
 
-class LegacySelectiveSSM(nn.Module):
-    """Checkpoint-compatible custom Mamba block used by the original experiments."""
+class ReferenceSelectiveSSM(nn.Module):
+    """Reference PyTorch selective state-space block for reproducible experiments."""
 
     def __init__(self, d_model, d_state=16, d_conv=4, expand=2, dt_rank="auto"):
         super().__init__()
@@ -154,8 +153,8 @@ class MambaBlock(nn.Module):
         self.norm = nn.LayerNorm(d_model)
         if self.backend == "official":
             self.ssm = OfficialMamba(d_model=d_model, d_state=d_state, d_conv=4, expand=expand)
-        elif self.backend == "legacy":
-            self.ssm = LegacySelectiveSSM(d_model, d_state=d_state, d_conv=4, expand=expand)
+        elif self.backend == "reference":
+            self.ssm = ReferenceSelectiveSSM(d_model, d_state=d_state, d_conv=4, expand=expand)
         else:
             self.ssm = SelectiveSSM(d_model, d_state=d_state, d_conv=4, expand=expand)
         self.dropout = nn.Dropout(dropout)
@@ -207,11 +206,11 @@ class AttentionPooling(nn.Module):
         return torch.sum(x * weights.unsqueeze(-1), dim=1)
 
 
-class EdgeWind_Mamba_Model(nn.Module):
+class WindMambaModel(nn.Module):
     def __init__(
         self,
         in_dim=10,
-        seq_len=96,
+        seq_len=36,
         pred_len=6,
         hidden_dim=96,
         d_state=16,
@@ -326,16 +325,21 @@ class EdgeWind_Mamba_Model(nn.Module):
         return ws_pred, torch.sin(pred_angle), torch.cos(pred_angle)
 
 
-class MaritimeRiskLoss(nn.Module):
-    def __init__(self, extreme_ws_threshold=DEFAULT_HIGH_WIND_THRESHOLD, extreme_weight=2.0, wd_weight=1.0):
+class UpperTailWeightedDirectionalLoss(nn.Module):
+    def __init__(
+        self,
+        upper_tail_ws_threshold=DEFAULT_UPPER_TAIL_WS_THRESHOLD,
+        upper_tail_weight=2.0,
+        wd_weight=1.0,
+    ):
         super().__init__()
-        self.extreme_ws_threshold = extreme_ws_threshold
-        self.extreme_weight = extreme_weight
+        self.upper_tail_ws_threshold = upper_tail_ws_threshold
+        self.upper_tail_weight = upper_tail_weight
         self.wd_weight = wd_weight
 
     def forward(self, ws_pred, wd_sin_pred, wd_cos_pred, ws_true, wd_sin_true, wd_cos_true):
         ws_loss = F.smooth_l1_loss(ws_pred, ws_true, reduction="none")
-        ws_weights = 1.0 + (ws_true > self.extreme_ws_threshold).float() * (self.extreme_weight - 1.0)
+        ws_weights = 1.0 + (ws_true > self.upper_tail_ws_threshold).float() * (self.upper_tail_weight - 1.0)
         ws_loss = (ws_loss * ws_weights).mean()
 
         pred_dir = F.normalize(torch.cat([wd_sin_pred, wd_cos_pred], dim=-1), dim=-1)
@@ -397,15 +401,19 @@ class Loss_SmoothL1_DirCos(nn.Module):
         return ws_loss + self.wd_weight * wd_loss, ws_loss, wd_loss
 
 
-class Loss_SmoothL1_Extreme(nn.Module):
-    def __init__(self, extreme_ws_threshold=DEFAULT_HIGH_WIND_THRESHOLD, extreme_weight=2.0):
+class LossSmoothL1UpperTail(nn.Module):
+    def __init__(
+        self,
+        upper_tail_ws_threshold=DEFAULT_UPPER_TAIL_WS_THRESHOLD,
+        upper_tail_weight=2.0,
+    ):
         super().__init__()
-        self.extreme_ws_threshold = extreme_ws_threshold
-        self.extreme_weight = extreme_weight
+        self.upper_tail_ws_threshold = upper_tail_ws_threshold
+        self.upper_tail_weight = upper_tail_weight
 
     def forward(self, ws_pred, wd_sin_pred, wd_cos_pred, ws_true, wd_sin_true, wd_cos_true):
         ws_loss = F.smooth_l1_loss(ws_pred, ws_true, reduction="none")
-        ws_weights = 1.0 + (ws_true > self.extreme_ws_threshold).float() * (self.extreme_weight - 1.0)
+        ws_weights = 1.0 + (ws_true > self.upper_tail_ws_threshold).float() * (self.upper_tail_weight - 1.0)
         ws_loss = (ws_loss * ws_weights).mean()
         wd_loss = F.l1_loss(
             torch.cat([wd_sin_pred, wd_cos_pred], dim=-1),
@@ -416,8 +424,8 @@ class Loss_SmoothL1_Extreme(nn.Module):
 
 def build_loss(
     loss_mode="smoothl1_dircos",
-    extreme_ws_threshold=DEFAULT_HIGH_WIND_THRESHOLD,
-    extreme_weight=2.0,
+    upper_tail_ws_threshold=DEFAULT_UPPER_TAIL_WS_THRESHOLD,
+    upper_tail_weight=2.0,
     wd_weight=1.0,
 ):
     loss_mode = (loss_mode or "smoothl1_dircos").strip().lower()
@@ -427,17 +435,17 @@ def build_loss(
         return Loss_MAE()
     if loss_mode in {"smoothl1", "smoothl1_dirl1"}:
         return Loss_SmoothL1()
-    if loss_mode in {"smoothl1_extreme", "smoothl1_extreme_dirl1"}:
-        return Loss_SmoothL1_Extreme(
-            extreme_ws_threshold=extreme_ws_threshold,
-            extreme_weight=extreme_weight,
+    if loss_mode in {"smoothl1_upper_tail", "smoothl1_upper_tail_dirl1"}:
+        return LossSmoothL1UpperTail(
+            upper_tail_ws_threshold=upper_tail_ws_threshold,
+            upper_tail_weight=upper_tail_weight,
         )
     if loss_mode in {"smoothl1_dircos", "dircos"}:
         return Loss_SmoothL1_DirCos(wd_weight=wd_weight)
-    if loss_mode in {"smoothl1_extreme_dircos", "risk", "maritime_risk"}:
-        return MaritimeRiskLoss(
-            extreme_ws_threshold=extreme_ws_threshold,
-            extreme_weight=extreme_weight,
+    if loss_mode in {"smoothl1_upper_tail_dircos", "upper_tail"}:
+        return UpperTailWeightedDirectionalLoss(
+            upper_tail_ws_threshold=upper_tail_ws_threshold,
+            upper_tail_weight=upper_tail_weight,
             wd_weight=wd_weight,
         )
     raise ValueError(f"Unsupported loss mode: {loss_mode}")

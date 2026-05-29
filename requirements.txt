@@ -1,9 +1,11 @@
-numpy
-pandas
-scikit-learn
-torch
-matplotlib
-tqdm
+# Environment used for the reported experiments:
+# Python 3.9.25 with CUDA 12.8 and PyTorch 2.8.0.
+numpy==1.26.4
+pandas==2.3.3
+scikit-learn==1.1.3
+torch==2.8.0
+matplotlib==3.9.4
+tqdm==4.67.1
 
 # Optional official Mamba backend. The code falls back to the custom PyTorch implementation if unavailable.
 # mamba-ssm

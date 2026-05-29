@@ -2,7 +2,6 @@ import math
 import os
 import random
 import sys
-import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -21,48 +20,47 @@ from experiment_config import (
     boat_ids_for,
     boat_tag,
 )
-from model import DEFAULT_HIGH_WIND_THRESHOLD, EdgeWind_Mamba_Model, build_loss
-
-
-warnings.filterwarnings("ignore")
+from model import DEFAULT_UPPER_TAIL_WS_THRESHOLD, WindMambaModel, build_loss
 
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-SEED = int(os.getenv("EDGEWIND_SEED", "42"))
-OUTPUT_SUFFIX = os.getenv("EDGEWIND_OUTPUT_SUFFIX", "").strip()
+SEED = int(os.getenv("WIND_MAMBA_SEED", "42"))
+OUTPUT_SUFFIX = os.getenv("WIND_MAMBA_OUTPUT_SUFFIX", "").strip()
 BATCH_SIZE = 32
-SEQ_LEN = int(os.getenv("EDGEWIND_SEQ_LEN", "36"))
-PRED_LEN = int(os.getenv("EDGEWIND_PRED_LEN", "6"))
-HIDDEN_DIM = int(os.getenv("EDGEWIND_HIDDEN_DIM", "96"))
-LOSS_MODE = os.getenv("EDGEWIND_LOSS_MODE", "smoothl1_dircos").strip().lower()
-EXTREME_WEIGHT = float(os.getenv("EDGEWIND_EXTREME_WEIGHT", "2.0"))
-WD_WEIGHT = float(os.getenv("EDGEWIND_WD_WEIGHT", "1.0"))
+SEQ_LEN = int(os.getenv("WIND_MAMBA_SEQ_LEN", "36"))
+PRED_LEN = int(os.getenv("WIND_MAMBA_PRED_LEN", "6"))
+HIDDEN_DIM = int(os.getenv("WIND_MAMBA_HIDDEN_DIM", "96"))
+LOSS_MODE = os.getenv("WIND_MAMBA_LOSS_MODE", "smoothl1_dircos").strip().lower()
+UPPER_TAIL_WEIGHT = float(os.getenv("WIND_MAMBA_UPPER_TAIL_WEIGHT", "2.0"))
+WD_WEIGHT = float(os.getenv("WIND_MAMBA_WD_WEIGHT", "1.0"))
 
 EPOCHS_TRANSFER_PRETRAIN = 60
 EPOCHS_TRANSFER_FINETUNE = 20
-EPOCHS_NO_TRANSFER = 60
+EPOCHS_TARGET_ONLY = 60
 
 LR_TRANSFER_PRETRAIN = 2e-4
 LR_TRANSFER_FINETUNE = 5e-5
-LR_NO_TRANSFER = 2e-4
+LR_TARGET_ONLY = 2e-4
 WEIGHT_DECAY = 1e-4
 EARLY_STOPPING_PATIENCE = 8
 GRAD_MAX_NORM = 1.0
 
-EXTREME_WS_THRESHOLD = float(os.getenv("EDGEWIND_EXTREME_WS_THRESHOLD", f"{DEFAULT_HIGH_WIND_THRESHOLD}"))
+UPPER_TAIL_WS_THRESHOLD = float(
+    os.getenv("WIND_MAMBA_UPPER_TAIL_WS_THRESHOLD", f"{DEFAULT_UPPER_TAIL_WS_THRESHOLD}")
+)
 PLOT_SAMPLES = 200
 
-OUTPUT_ROOT = Path("weights") / EXPERIMENT_VERSION / "edgewind"
-FIGURE_ROOT = Path("figures") / EXPERIMENT_VERSION / "edgewind"
+OUTPUT_ROOT = Path("weights") / EXPERIMENT_VERSION / "wind_mamba"
+FIGURE_ROOT = Path("figures") / EXPERIMENT_VERSION / "wind_mamba"
 if OUTPUT_SUFFIX:
     OUTPUT_ROOT = OUTPUT_ROOT / OUTPUT_SUFFIX
     FIGURE_ROOT = FIGURE_ROOT / OUTPUT_SUFFIX
-SUMMARY_PATH = OUTPUT_ROOT / "edgewind_summary.csv"
+SUMMARY_PATH = OUTPUT_ROOT / "wind_mamba_summary.csv"
 
 OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 FIGURE_ROOT.mkdir(parents=True, exist_ok=True)
 SHOW_PROGRESS = sys.stderr.isatty()
-RUN_NO_TRANSFER = os.getenv("EDGEWIND_RUN_NO_TRANSFER", "1") != "0"
+RUN_TARGET_ONLY = os.getenv("WIND_MAMBA_RUN_TARGET_ONLY", "1") != "0"
 
 
 def seed_everything(seed=42):
@@ -100,13 +98,13 @@ def compute_batch_statistics(ws_pred, wd_sin_pred, wd_cos_pred, ws_true, wd_sin_
     wd_diff = torch.abs(wd_pred_deg - wd_true_deg)
     wd_mae_sum = torch.sum(torch.min(wd_diff, 360.0 - wd_diff)).item()
 
-    extreme_mask = ws_true > EXTREME_WS_THRESHOLD
-    if torch.any(extreme_mask):
-        extreme_sq_error = torch.sum((ws_pred[extreme_mask] - ws_true[extreme_mask]) ** 2).item()
-        extreme_count = int(extreme_mask.sum().item())
+    upper_tail_mask = ws_true > UPPER_TAIL_WS_THRESHOLD
+    if torch.any(upper_tail_mask):
+        upper_tail_sq_error = torch.sum((ws_pred[upper_tail_mask] - ws_true[upper_tail_mask]) ** 2).item()
+        upper_tail_count = int(upper_tail_mask.sum().item())
     else:
-        extreme_sq_error = 0.0
-        extreme_count = 0
+        upper_tail_sq_error = 0.0
+        upper_tail_count = 0
 
     return {
         "ws_sq_error": ws_sq_error,
@@ -115,13 +113,13 @@ def compute_batch_statistics(ws_pred, wd_sin_pred, wd_cos_pred, ws_true, wd_sin_
         "ws_true_sq_sum": ws_true_sq_sum,
         "wd_mae_sum": wd_mae_sum,
         "target_count": target_count,
-        "extreme_sq_error": extreme_sq_error,
-        "extreme_count": extreme_count,
+        "upper_tail_sq_error": upper_tail_sq_error,
+        "upper_tail_count": upper_tail_count,
     }
 
 
 def build_model(feature_stats):
-    return EdgeWind_Mamba_Model(
+    return WindMambaModel(
         in_dim=10,
         seq_len=SEQ_LEN,
         pred_len=PRED_LEN,
@@ -155,8 +153,8 @@ def run_epoch(model, loader, criterion, optimizer=None):
     total_ws_true_sum = 0.0
     total_ws_true_sq_sum = 0.0
     total_wd_mae_sum = 0.0
-    total_extreme_sq_error = 0.0
-    total_extreme_count = 0
+    total_upper_tail_sq_error = 0.0
+    total_upper_tail_count = 0
     total_grad_norm = 0.0
 
     loop = tqdm(loader, leave=False, disable=not SHOW_PROGRESS)
@@ -214,8 +212,8 @@ def run_epoch(model, loader, criterion, optimizer=None):
         total_ws_true_sum += stats["ws_true_sum"]
         total_ws_true_sq_sum += stats["ws_true_sq_sum"]
         total_wd_mae_sum += stats["wd_mae_sum"]
-        total_extreme_sq_error += stats["extreme_sq_error"]
-        total_extreme_count += stats["extreme_count"]
+        total_upper_tail_sq_error += stats["upper_tail_sq_error"]
+        total_upper_tail_count += stats["upper_tail_count"]
         total_grad_norm += grad_norm * batch_size
 
         batch_rmse = math.sqrt(stats["ws_sq_error"] / max(stats["target_count"], 1))
@@ -229,7 +227,7 @@ def run_epoch(model, loader, criterion, optimizer=None):
             "ws_rmse": float("inf"),
             "ws_mae": float("inf"),
             "wd_mae": float("inf"),
-            "extreme_ws_rmse": float("inf"),
+            "upper_tail_ws_rmse": float("inf"),
             "r2": float("nan"),
             "grad_norm": float("inf"),
         }
@@ -245,7 +243,11 @@ def run_epoch(model, loader, criterion, optimizer=None):
         "ws_rmse": math.sqrt(total_ws_sq_error / total_target_count),
         "ws_mae": total_ws_abs_error / total_target_count,
         "wd_mae": total_wd_mae_sum / total_target_count,
-        "extreme_ws_rmse": math.sqrt(total_extreme_sq_error / total_extreme_count) if total_extreme_count > 0 else 0.0,
+        "upper_tail_ws_rmse": (
+            math.sqrt(total_upper_tail_sq_error / total_upper_tail_count)
+            if total_upper_tail_count > 0
+            else 0.0
+        ),
         "r2": r2,
         "grad_norm": total_grad_norm / total_sample_count,
     }
@@ -267,7 +269,8 @@ def fit_stage(model, stage_name, train_loader, val_loader, optimizer, scheduler,
         print(
             f"train loss={train_metrics['loss']:.4f}, val loss={val_metrics['loss']:.4f}, "
             f"val ws_rmse={val_metrics['ws_rmse']:.4f}, val ws_mae={val_metrics['ws_mae']:.4f}, "
-            f"val wd_mae={val_metrics['wd_mae']:.2f}, val ext_rmse={val_metrics['extreme_ws_rmse']:.4f}, "
+            f"val wd_mae={val_metrics['wd_mae']:.2f}, "
+            f"val upper_tail_rmse={val_metrics['upper_tail_ws_rmse']:.4f}, "
             f"val score={current_score:.4f}"
         )
 
@@ -360,7 +363,7 @@ def plot_results(prediction_bundle, val_metrics, test_metrics, save_path, title)
         f"Val WS-RMSE: {val_metrics['ws_rmse']:.3f}\n"
         f"Val WS-MAE: {val_metrics['ws_mae']:.3f}\n"
         f"Val WD-MAE: {val_metrics['wd_mae']:.2f}\n"
-        f"Val Extreme RMSE: {val_metrics['extreme_ws_rmse']:.3f}\n"
+        f"Val upper-tail RMSE: {val_metrics['upper_tail_ws_rmse']:.3f}\n"
         f"Test WS-RMSE: {test_metrics['ws_rmse']:.3f}\n"
         f"Test WS-MAE: {test_metrics['ws_mae']:.3f}\n"
         f"Test WD-MAE: {test_metrics['wd_mae']:.2f}"
@@ -511,7 +514,7 @@ def train_transfer_group(criterion, summary_rows):
             val_metrics,
             test_metrics,
             save_path=figure_path,
-            title=f"EdgeWind Transfer Result on {tag.upper()}",
+            title=f"Wind-Mamba Transfer Result on {tag.upper()}",
         )
 
         summary_rows.append(
@@ -531,9 +534,9 @@ def train_transfer_group(criterion, summary_rows):
         print(f"Finished transfer training for {tag.upper()}.")
 
 
-def train_no_transfer_group(criterion, summary_rows):
+def train_target_only_group(criterion, summary_rows):
     print("\n" + "=" * 80)
-    print("No-transfer experiment: train from scratch on each target boat only")
+    print("Target-only experiment: train from scratch on each target boat only")
     print("=" * 80)
 
     for target_file in TARGET_BOAT_FILES:
@@ -568,18 +571,18 @@ def train_no_transfer_group(criterion, summary_rows):
             ),
         }
         model = build_model(target_feature_stats)
-        scratch_ckpt = OUTPUT_ROOT / f"no_transfer_{tag}_best.pth"
+        scratch_ckpt = OUTPUT_ROOT / f"target_only_{tag}_best.pth"
         maybe_train_stage(
             model,
             scratch_ckpt,
-            stage_name=f"no-transfer-{tag}",
+            stage_name=f"target-only-{tag}",
             train_loader=make_loader(target_datasets["train"], shuffle=True),
             val_loader=make_loader(target_datasets["val"], shuffle=False),
             criterion=criterion,
-            epochs=EPOCHS_NO_TRANSFER,
-            lr=LR_NO_TRANSFER,
+            epochs=EPOCHS_TARGET_ONLY,
+            lr=LR_TARGET_ONLY,
             metadata={
-                "experiment": "no_transfer",
+                "experiment": "target_only",
                 "stage": "scratch",
                 "target_boat": target_file,
                 "target_boat_id": target_id,
@@ -589,19 +592,19 @@ def train_no_transfer_group(criterion, summary_rows):
         val_metrics = evaluate_split(model, target_datasets["val"], criterion)
         test_metrics = evaluate_split(model, target_datasets["test"], criterion)
         prediction_bundle = collect_prediction_segment(model, target_datasets["val"], num_samples=PLOT_SAMPLES)
-        figure_path = FIGURE_ROOT / f"no_transfer_{tag}.png"
+        figure_path = FIGURE_ROOT / f"target_only_{tag}.png"
         plot_results(
             prediction_bundle,
             val_metrics,
             test_metrics,
             save_path=figure_path,
-            title=f"EdgeWind No-Transfer Result on {tag.upper()}",
+            title=f"Wind-Mamba Target-Only Result on {tag.upper()}",
         )
 
         summary_rows.append(
             {
                 "seed": SEED,
-                "experiment": "no_transfer",
+                "experiment": "target_only",
                 "target": tag,
                 "checkpoint": str(scratch_ckpt),
                 "val_ws_rmse": val_metrics["ws_rmse"],
@@ -612,7 +615,7 @@ def train_no_transfer_group(criterion, summary_rows):
                 "test_wd_mae": test_metrics["wd_mae"],
             }
         )
-        print(f"Finished no-transfer training for {tag.upper()}.")
+        print(f"Finished target-only training for {tag.upper()}.")
 
 
 def main():
@@ -624,9 +627,9 @@ def main():
         print(f"Output suffix: {OUTPUT_SUFFIX}")
     print(
         f"Config | seq_len={SEQ_LEN} pred_len={PRED_LEN} hidden_dim={HIDDEN_DIM} "
-        f"loss_mode={LOSS_MODE} high_wind_threshold={EXTREME_WS_THRESHOLD:.2f}"
+        f"loss_mode={LOSS_MODE} upper_tail_ws_threshold={UPPER_TAIL_WS_THRESHOLD:.2f}"
     )
-    print(f"Run no-transfer: {RUN_NO_TRANSFER}")
+    print(f"Run target-only: {RUN_TARGET_ONLY}")
     print("Source boats:")
     for file_path in SOURCE_BOAT_FILES:
         print(f"  - {boat_tag(file_path).upper()}")
@@ -636,18 +639,18 @@ def main():
 
     criterion = build_loss(
         loss_mode=LOSS_MODE,
-        extreme_ws_threshold=EXTREME_WS_THRESHOLD,
-        extreme_weight=EXTREME_WEIGHT,
+        upper_tail_ws_threshold=UPPER_TAIL_WS_THRESHOLD,
+        upper_tail_weight=UPPER_TAIL_WEIGHT,
         wd_weight=WD_WEIGHT,
     ).to(DEVICE)
 
     summary_rows = []
     train_transfer_group(criterion, summary_rows)
-    if RUN_NO_TRANSFER:
-        train_no_transfer_group(criterion, summary_rows)
+    if RUN_TARGET_ONLY:
+        train_target_only_group(criterion, summary_rows)
     save_summary(summary_rows)
 
-    print("\nEdgeWind training finished for all requested experiments.")
+    print("\nWind-Mamba training finished for all requested experiments.")
 
 
 if __name__ == "__main__":
