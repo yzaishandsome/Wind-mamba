@@ -4,4 +4,6 @@ scikit-learn
 torch
 matplotlib
 tqdm
-mamba-ssm
+
+# Optional official Mamba backend. The code falls back to the custom PyTorch implementation if unavailable.
+# mamba-ssm
