@@ -1,6 +1,6 @@
 # Wind-Mamba
 
-This repository contains a compact implementation of Wind-Mamba, a persistence-guided dual-domain forecasting model for short-term marine wind prediction on unmanned surface vehicles (USVs).
+This repository contains a compact research implementation of Wind-Mamba for review and reproducibility, covering a persistence-guided dual-domain forecasting model for short-term marine wind prediction on unmanned surface vehicles (USVs).
 
 ## Files
 
