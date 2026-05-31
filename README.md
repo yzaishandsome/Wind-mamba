@@ -2,6 +2,10 @@
 
 This repository contains a compact research implementation of Wind-Mamba for review and reproducibility, covering a persistence-guided dual-domain forecasting model for short-term marine wind prediction on unmanned surface vehicles (USVs).
 
+## Architecture
+
+![Wind-Mamba dual-domain architecture](assets/wind_mamba_architecture.png)
+
 ## Files
 
 - `model.py`: Wind-Mamba model definition, loss functions, and optional Mamba backend support.
@@ -41,7 +45,7 @@ Alternatively, edit `DATA_ROOT`, `VESSEL_IDS`, and `TARGET_VESSEL_IDS` in `exper
 
 Each processed CSV should include the columns used in `data_provider.py`, including location, vessel-motion variables, wind-vector components, gust wind speed, air temperature, barometric pressure, true wind speed, and true wind direction.
 
-The repository intentionally excludes raw data, processed data, trained weights, and paper figures.
+The repository intentionally excludes raw data, processed data, trained weights, and the full paper figure set. The architecture schematic above is included only to clarify the model structure.
 
 ## Installation
 
