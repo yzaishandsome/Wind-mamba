@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import re
+import statistics
+from collections import defaultdict
 from pathlib import Path
 
 
@@ -73,6 +76,55 @@ def check_manifests() -> None:
     assert all(len(row["sha256"]) == 64 for row in processed)
 
 
+def check_table8_mapping() -> None:
+    path = ROOT / "results/submitted/repeated_core_ablation_raw.csv"
+    with path.open(newline="", encoding="utf-8-sig") as stream:
+        rows = list(csv.DictReader(stream))
+
+    grouped = defaultdict(list)
+    for row in rows:
+        grouped[(row["variant_key"], int(row["seed"]))].append(row)
+
+    expected = {
+        "full": {
+            "mean": (0.8898172784355733, 0.6071562684901959, 8.676276048186427, 0.8754231000348532),
+            "std": (0.0027337858056444, 0.0026511779184095, 0.0964216920426681, 0.0008263072444933),
+        },
+        "mlp_decoder": {
+            "mean": (0.8849118330357462, 0.5985332922532457, 8.504349406387409, 0.8760917307258935),
+            "std": (0.0053207489889797, 0.0031808998222584, 0.0577482139010790, 0.0018334427770434),
+        },
+    }
+    columns = ("test_ws_rmse", "test_ws_mae", "test_wd_mae", "test_r2")
+    for variant, reference in expected.items():
+        seed_means = []
+        for seed in (42, 43, 44, 45, 46):
+            target_rows = grouped[(variant, seed)]
+            assert sorted(row["target"] for row in target_rows) == ["sd1042", "sd1091"]
+            seed_means.append(tuple(statistics.mean(float(row[column]) for row in target_rows) for column in columns))
+        observed_means = tuple(statistics.mean(values) for values in zip(*seed_means))
+        observed_stds = tuple(statistics.stdev(values) for values in zip(*seed_means))
+        assert all(
+            math.isclose(value, expected_value, abs_tol=1e-12)
+            for value, expected_value in zip(observed_means, reference["mean"])
+        )
+        assert all(
+            math.isclose(value, expected_value, abs_tol=1e-12)
+            for value, expected_value in zip(observed_stds, reference["std"])
+        )
+
+
+def check_experimental_thresholds() -> None:
+    offenders = []
+    for path in ROOT.rglob("*.py"):
+        if ".git" in path.parts or path.resolve() == Path(__file__).resolve():
+            continue
+        if "10.59" in path.read_text(encoding="utf-8", errors="replace"):
+            offenders.append(str(path.relative_to(ROOT)))
+    if offenders:
+        raise RuntimeError("Obsolete all-data 10.59 threshold remains in executable code:\n" + "\n".join(offenders))
+
+
 def check_portability() -> None:
     offenders = []
     for path in ROOT.rglob("*"):
@@ -89,6 +141,8 @@ def main() -> None:
     require_paths()
     check_configuration()
     check_manifests()
+    check_table8_mapping()
+    check_experimental_thresholds()
     check_portability()
     print("Release integrity check passed.")
 

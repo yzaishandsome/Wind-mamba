@@ -44,7 +44,10 @@ Wind-mamba/
 The files under `reproduction/submitted/` preserve the names and execution
 structure used by the reported benchmark. The top-level modules provide a
 cleaner public interface. Both use the same 10-variable input order and the
-same chronological data loader.
+same chronological data loader. All executable upper-tail analyses use the
+source-training-only p95 of 10.580439745930407 m/s; the rounded full-data p95
+of 10.59 m/s is a descriptive manuscript statistic, not an experimental
+threshold in this repository.
 
 ## Data
 
@@ -192,7 +195,11 @@ are stated in the class docstrings and runner configuration.
 cd reproduction/submitted
 export WIND_MAMBA_DATA_ROOT=/absolute/path/to/processed_data
 export EDGEWIND_REPEAT_SEEDS=42,43,44,45,46
-export EDGEWIND_REPEAT_STEPS=ablation,loss,replacement
+export EDGEWIND_REPEAT_STEPS=ablation
+export EDGEWIND_REPEAT_SUFFIX_PREFIX=rev6_fresh_seed
+python run_repeated_core_experiments.py
+
+export EDGEWIND_REPEAT_STEPS=loss,replacement
 export EDGEWIND_REPEAT_SUFFIX_PREFIX=rev4_seed
 python run_repeated_core_experiments.py
 cd ../..
@@ -200,7 +207,9 @@ cd ../..
 
 These commands cover the module ablation, loss ablation, weighted loss,
 Mamba/Transformer backbone control, and the no-FFT checkpoint reused by the
-revision diagnostics.
+revision diagnostics. The separate suffixes match the formal run families:
+module variants use `rev6_fresh_seed_*`, while loss and backbone controls use
+`rev4_seed_*`.
 
 ### 5. Revision spectral and residual-bound experiments
 
@@ -223,6 +232,9 @@ the source-training-p95 weighted-loss rerun.
 ### 6. Circular-input sensitivity
 
 ```bash
+export WIND_MAMBA_DATA_ROOT=/absolute/path/to/processed_data
+export WIND_MAMBA_CHECKPOINT_ROOT=/absolute/path/to/Wind-mamba/reproduction/submitted
+export WIND_MAMBA_REVISION_OUTPUT=/absolute/path/to/revision_outputs
 python reproduction/revision/circular/run_circular_sensitivity.py
 python reproduction/revision/run_task5_circular_3seed.py
 ```
@@ -233,6 +245,9 @@ and 44 and aggregates the three-seed 10D-degree versus 12D-sine/cosine control.
 ### 7. DPFMformer closest-prior-art comparison
 
 ```bash
+export WIND_MAMBA_DATA_ROOT=/absolute/path/to/processed_data
+export WIND_MAMBA_CHECKPOINT_ROOT=/absolute/path/to/Wind-mamba/reproduction/submitted
+export WIND_MAMBA_REVISION_OUTPUT=/absolute/path/to/revision_outputs
 export DPFMFORMER_PAPER_PATH=/absolute/path/to/1-s2.0-S0360544225028671-main.pdf
 python reproduction/revision/run_task1_dpfmformer.py --mode smoke --seeds 42
 python reproduction/revision/run_task1_dpfmformer.py --mode train --seeds 42 43 44 45 46
@@ -250,6 +265,10 @@ control and common benchmark-loss control are included.
 ### 8. Horizon, persistence, and clean conformal analyses
 
 ```bash
+export WIND_MAMBA_DATA_ROOT=/absolute/path/to/processed_data
+export WIND_MAMBA_CHECKPOINT_ROOT=/absolute/path/to/Wind-mamba/reproduction/submitted
+export WIND_MAMBA_HORIZON_OUTPUT=/absolute/path/to/horizon_outputs
+export WIND_MAMBA_CONFORMAL_OUTPUT=/absolute/path/to/conformal_outputs
 python reproduction/revision/run_horizon_and_bootstrap.py
 python interval.py
 ```
@@ -273,7 +292,9 @@ python scripts/generate_fig9.py \
 ```
 
 The table command produces numeric sources for Table 4, Table 8, Table 9, and
-Tables 11-15. The Fig. 9 command uses the locked first chronological SD1042
+Tables 11-15. For Table 8 it recomputes target means and five-seed sample
+standard deviations from the released target-level rows and verifies the
+explicit `full` and `mlp_decoder` row mapping. The Fig. 9 command uses the locked first chronological SD1042
 upper-tail case and the clean conformal interval data in `results/revision/`.
 The exact source-file mapping is listed in
 [`docs/RESULT_PROVENANCE.md`](docs/RESULT_PROVENANCE.md).
@@ -310,7 +331,10 @@ variants, targets, and seeds are unchanged.
 
 The public state immediately before the ASOC major-revision reproducibility
 sync is preserved by the Git tag `pre-asoc-major-repro-20260907`. This provides
-a stable recovery point independently of later changes on `main`.
+a stable recovery point independently of later changes on `main`. The first
+complete reproduction package remains available as
+`asoc-major-revision-repro-v1`; the final audited package, including the locked
+Table 8 mapping, is tagged `asoc-major-revision-repro-v2`.
 
 ## Citation
 

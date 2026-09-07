@@ -60,7 +60,7 @@ def step_env(base_env, step):
     env = dict(base_env)
     env.setdefault("EDGEWIND_MAMBA_BACKEND", "custom")
     env.setdefault("EDGEWIND_LOSS_MODE", "smoothl1_dircos")
-    env.setdefault("EDGEWIND_EXTREME_WS_THRESHOLD", "10.59")
+    env.setdefault("EDGEWIND_EXTREME_WS_THRESHOLD", "10.580439745930407")
     if step == "edgewind":
         env.setdefault("EDGEWIND_RUN_NO_TRANSFER", "0")
     if step == "baselines":

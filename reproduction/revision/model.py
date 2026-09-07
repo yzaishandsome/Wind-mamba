@@ -15,7 +15,7 @@ except ImportError:
     HAS_OFFICIAL_MAMBA = False
 
 
-DEFAULT_HIGH_WIND_THRESHOLD = 10.59
+DEFAULT_HIGH_WIND_THRESHOLD = 10.580439745930407
 
 
 def resolve_mamba_backend(backend=None):
