@@ -7,12 +7,22 @@ data/
 weights/
 figures/
 logs/
+outputs/
+comparison_outputs/
+generated_tables/
+generated_figures/
 *.pth
 *.pt
 *.ckpt
 *.csv
 *.npy
 *.npz
+
+# Small, versioned reproducibility manifests and revision summaries.
+!preprocessing/*.csv
+!results/**/*.csv
+!results/**/*.json
+!results/**/*.npz
 
 # Local environment
 .venv/

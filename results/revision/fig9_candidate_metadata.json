@@ -1,0 +1,13 @@
+{
+  "old_original_test_case_index": 1907,
+  "new_final_interval_test_case_index": 65,
+  "source_training_only_threshold_mps": 10.580439745930407,
+  "future_true_mean_mps": 10.97445011138916,
+  "future_true_max_mps": 11.207318305969238,
+  "all_future_points_above_threshold": true,
+  "case_coverage_percent": 100.0,
+  "annotation_scope": "SD1042 final interval-test overall metrics, not single-case metrics",
+  "sd1042_overall_picp_percent": 86.70183231538034,
+  "sd1042_overall_mpiw_mps": 2.8485546112060547,
+  "case_selection_warning": "The originally submitted case was selected with test ground truth. This export preserves it only for audit continuity and must not be presented as a pre-specified case-selection protocol."
+}

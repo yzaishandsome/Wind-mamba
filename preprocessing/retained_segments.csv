@@ -1,0 +1,11 @@
+﻿file_name,selected_candidate_id,selected_rows,selected_start_time,selected_end_time,selected_completeness,selected_interpolated_rows,candidate_count,selection_rule
+sd1031.csv,2,1512,2024-08-06 16:00:00+00:00,2024-08-17 03:50:00+00:00,1.0,0,3,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1033.csv,0,11563,2024-10-28 23:00:00+00:00,2025-01-17 06:00:00+00:00,0.9957623454120903,49,2,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1036.csv,1,8531,2024-08-11 22:00:00+00:00,2024-10-10 03:40:00+00:00,1.0,0,2,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1040.csv,1,18690,2024-08-29 16:00:00+00:00,2025-01-06 10:50:00+00:00,0.9998929909042269,2,2,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1041.csv,1,6919,2024-06-27 18:00:00+00:00,2024-08-14 19:00:00+00:00,1.0,0,4,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1042.csv,0,18420,2024-08-20 14:10:00+00:00,2024-12-26 12:00:00+00:00,0.9991314260897888,15,2,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1057.csv,5,7333,2024-11-18 18:00:00+00:00,2025-01-08 16:00:00+00:00,1.0,0,6,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1069.csv,1,4730,2024-08-06 14:00:00+00:00,2024-09-08 10:10:00+00:00,0.9985200845665962,7,2,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1083.csv,0,2073,2024-09-25 22:30:00+00:00,2024-10-10 07:50:00+00:00,0.9768451519536903,48,1,longest_segment_then_highest_completeness_then_fewer_interpolated_points
+sd1091.csv,2,12121,2024-10-06 17:00:00+00:00,2024-12-29 21:00:00+00:00,0.9993399884497979,8,3,longest_segment_then_highest_completeness_then_fewer_interpolated_points

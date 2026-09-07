@@ -1,0 +1,55 @@
+{
+  "dataset": {
+    "sampling_interval_minutes": 10,
+    "input_features": [
+      "latitude",
+      "longitude",
+      "SOG",
+      "COG",
+      "HDG",
+      "UWND_MEAN",
+      "VWND_MEAN",
+      "GUST_WND_MEAN",
+      "TEMP_AIR_MEAN",
+      "BARO_PRES_MEAN"
+    ],
+    "source_vessels": ["sd1031", "sd1033", "sd1036", "sd1040", "sd1041", "sd1057", "sd1069", "sd1083"],
+    "target_vessels": ["sd1042", "sd1091"],
+    "train_ratio": 0.6,
+    "validation_ratio": 0.2,
+    "test_ratio": 0.2,
+    "window_stride": 1,
+    "sequence_length": 36,
+    "prediction_length": 6
+  },
+  "model": {
+    "input_dimension": 10,
+    "hidden_dimension": 96,
+    "mamba_layers": 3,
+    "state_dimension": 16,
+    "direction_loss_weight": 1.0,
+    "residual_bound_mps": 4.0,
+    "mamba_backend_for_reported_checkpoints": "custom"
+  },
+  "training": {
+    "seeds": [42, 43, 44, 45, 46],
+    "batch_size": 32,
+    "optimizer": "AdamW",
+    "weight_decay": 0.0001,
+    "gradient_max_norm": 1.0,
+    "scheduler": "CosineAnnealingLR",
+    "scheduler_min_lr": 0.000001,
+    "early_stopping_patience": 8,
+    "source_pretraining_epochs": 60,
+    "source_pretraining_learning_rate": 0.0002,
+    "target_finetuning_epochs": 20,
+    "target_finetuning_learning_rate": 0.00005
+  },
+  "revision": {
+    "source_training_ws_p95_mps": 10.580439745930407,
+    "conformal_alpha": 0.1,
+    "conformal_split": "60% train / 20% validation / 10% calibration / 10% final interval test",
+    "bootstrap_replicates": 5000,
+    "bootstrap_seed": 20260903
+  }
+}
