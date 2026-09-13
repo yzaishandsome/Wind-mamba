@@ -4,7 +4,7 @@ Status: frozen before the seed-42 smoke test and formal training.
 
 ## 1. Source and scope
 
-The implementation follows the complete Energy paper by Hong et al. (2025), especially Fig. 2, Eqs. (1)-(6) and (10), Table 2, and the descriptions in Sections 2.2.1-2.2.5. No architecture is inferred from the title or an abstract. No official author implementation was found.
+The implementation follows the complete Energy paper by Hong et al. (2025), especially Fig. 2, Eqs. (1)-(6) and (10), Table 2, and the descriptions in Sections 2.2.1-2.2.5. No architecture is inferred from the title or an abstract; the implementation is explicitly documented as a paper-based reimplementation following the published formulation.
 
 The paper studies **univariate wind-power forecasting**. The present comparison minimally adapts the base DPFMformer architecture to the submitted Wind-Mamba benchmark for joint marine wind-speed and wind-direction forecasting.
 

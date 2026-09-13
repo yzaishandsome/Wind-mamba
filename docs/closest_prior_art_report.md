@@ -2,7 +2,7 @@
 
 ## Source and audit status
 
-The complete Energy paper is the sole primary method source. Its identity and SHA256 are recorded in `SOURCE_AVAILABLE.md`. No official author implementation was identified, so this is a declared paper-based reimplementation. The architecture and every paper-level ambiguity were frozen in `dpfmformer_reimplementation_spec.md` before the seed-42 smoke test. The smoke test passed without constructing a target test loader.
+The complete Energy paper is the sole primary method source. Its identity and SHA256 are recorded in `SOURCE_AVAILABLE.md`. This comparison is explicitly documented as a paper-based reimplementation following the published formulation. The architecture and every paper-level ambiguity were frozen in `dpfmformer_reimplementation_spec.md` before the seed-42 smoke test. The smoke test passed without constructing a target test loader.
 
 ## What was compared
 
@@ -43,7 +43,7 @@ DPFMformer performs multiscale smoothing/downsampling, applies FFT at each scale
 
 ## Reviewer 5-1 coverage
 
-Reviewer 5-1 is covered experimentally by a five-seed primary paper-loss comparison and a same-architecture common-loss control. The response must state that no official implementation was available and identify the declared paper ambiguities; it should not claim bitwise reproduction of the authors' code. DPFMformer-MEC was not included because MEC is a separate validation-error correction system rather than the requested dual-path base architecture.
+Reviewer 5-1 is covered experimentally by a five-seed primary paper-loss comparison and a same-architecture common-loss control. The response should identify the comparison as a paper-based reimplementation following the published formulation, record the declared paper ambiguities, and avoid claiming bitwise reproduction of the authors' code. DPFMformer-MEC was not included because MEC is a separate validation-error correction system rather than the requested dual-path base architecture.
 
 ## Manuscript-stage decision
 

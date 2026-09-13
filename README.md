@@ -255,8 +255,8 @@ python reproduction/revision/run_task1_dpfmformer.py --mode aggregate
 ```
 
 This is a **paper-based reimplementation for the reviewer-requested
-comparison; no official implementation was available**. It follows Hong et
-al., *Energy* 332 (2025) 137225 and documents frozen paper-level ambiguities in
+comparison following the published formulation**. It follows Hong et al.,
+*Energy* 332 (2025) 137225 and documents frozen paper-level ambiguities in
 [`docs/dpfmformer_reimplementation_spec.md`](docs/dpfmformer_reimplementation_spec.md).
 The marine adaptation changes only the input projection, multi-horizon output,
 and joint WS/sin(WD)/cos(WD) target. Both the original frequency-kernel-loss
